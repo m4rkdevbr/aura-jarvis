@@ -42,7 +42,7 @@ E ela é aberta. Qualquer pessoa pode ler o código, rodar no próprio celular, 
 | **Pensa com método** | 20 frameworks de raciocínio (5 porquês, Eisenhower, pre-mortem, matriz de decisão, seis chapéus e outros) aplicados por baixo dos panos quando você traz um problema ou uma decisão. |
 | **Toma a iniciativa** | Resumo da manhã, lembrete antes de cada compromisso com o local e a rota, prévia do dia seguinte à noite, mensagens importantes lidas em voz alta, bateria baixa dos óculos e do celular. Tudo respeita o horário de silêncio. |
 | **Conserta a si mesma** | A cada 30 segundos ela confere óculos, Bluetooth, fotos, internet e ferramentas. Quando algo trava, ela reconecta ou reabre o canal sozinha e registra o diagnóstico. |
-| **Funciona offline** | Palavra "Aura" reconhecida sem internet (Vosk), um modelo de linguagem rodando no próprio celular (LFM3-Omni via llama.cpp), tradução e leitura de texto no aparelho (ML Kit). |
+| **Funciona offline** | Palavra "Aura" reconhecida sem internet (Vosk), um modelo de linguagem rodando no próprio celular (Gemma 4 com LiteRT-LM, ou LFM3-Omni via llama.cpp), tradução e leitura de texto no aparelho (ML Kit). |
 | **Se conecta a tudo** | Cliente MCP com OAuth: GitHub, Notion, Linear, Zapier (Google), Hugging Face e qualquer servidor MCP por HTTP viram ferramentas da Aura. Skills em Markdown ensinam rotinas novas sem programar. |
 | **Segura por padrão** | Chaves guardadas criptografadas no aparelho. Ela confirma antes de enviar mensagem, e-mail, SMS ou ligar. Texto de e-mails, notificações e páginas é tratado como informação, nunca como ordem. |
 
@@ -66,7 +66,7 @@ flowchart LR
         MEM["Memória + aprendizado"]
         REASON["20 frameworks<br/>de raciocínio"]
         TOOLS["~50 ferramentas<br/>celular, óculos, apps, MCP"]
-        LOCAL["IA local<br/>LFM3-Omni"]
+        LOCAL["IA local<br/>Gemma 4 · LFM3"]
         HEALTH["Autodiagnóstico"]
         PRO["Proatividade"]
     end

@@ -11,6 +11,7 @@ Tudo o que a Aura faz hoje, módulo por módulo. Cada item aponta para o código
 
 ### Conversa ao vivo (Gemini Live)
 - Conversa em tempo real por WebSocket, com áudio de 16 kHz indo e 24 kHz voltando ([`voice/GeminiLive.kt`](../app/src/main/java/app/dzz/copilot/voice/GeminiLive.kt), [`voice/LiveProtocol.kt`](../app/src/main/java/app/dzz/copilot/voice/LiveProtocol.kt)).
+- **Sem limite de tempo.** O servidor fecha cada sessão em cerca de 58 minutos. A Aura troca a conexão sozinha num momento de silêncio depois de 50 minutos, quando o servidor avisa ou quando a rede cai, levando a sessão retomada ou um resumo dos últimos turnos. Você não ouve saudação de novo ([`voice/LiveContinuity.kt`](../app/src/main/java/app/dzz/copilot/voice/LiveContinuity.kt)).
 - **Interrupção natural**: você fala por cima e ela para. O cancelamento de eco adaptativo evita que ela interrompa a si mesma.
 - Todas as ferramentas do cérebro viram chamadas de função dentro da conversa.
 - Ferramentas exclusivas da conversa: `end_conversation` (encerra quando você se despede) e `watch_mode` (manda imagens da câmera a cada poucos segundos por até 2 minutos).
@@ -56,8 +57,9 @@ Tudo o que a Aura faz hoje, módulo por módulo. Cada item aponta para o código
 Rotinas em Markdown que ensinam a Aura sem programar. Cada uma declara frases de ativação e os dados de que precisa ([`brain/Skills.kt`](../app/src/main/java/app/dzz/copilot/brain/Skills.kt)). Prontas: checagem cética, entrevista, estudar, pesquisa, preparar reunião, responder mensagem, resumo do dia, resumo para a memória, status, triagem de mensagens e viagem. Você pode criar as suas em `files/skills`.
 
 ### IA local
+- **Gemma 4 E2B** dentro do próprio app com LiteRT-LM, na GPU quando o celular permite e na CPU quando não ([`copilot/GemmaLocal.kt`](../app/src/main/java/app/dzz/copilot/copilot/GemmaLocal.kt)). Responde com chamada de ferramentas: a Aura escolhe as ferramentas mais ligadas ao pedido para o modelo pequeno decidir rápido ([`brain/LocalTurns.kt`](../app/src/main/java/app/dzz/copilot/brain/LocalTurns.kt)). Download único de 2,6 GB em **Ajustes > Cérebro**, com teste de velocidade.
 - LFM3-Omni 2B (GGUF) rodando no celular com `llama-server` do llama.cpp, baixados pelo próprio app ([`copilot/OnDeviceLlmRuntime.kt`](../app/src/main/java/app/dzz/copilot/copilot/OnDeviceLlmRuntime.kt), [`copilot/LocalLlmService.kt`](../app/src/main/java/app/dzz/copilot/copilot/LocalLlmService.kt), [`copilot/LocalLfmBrain.kt`](../app/src/main/java/app/dzz/copilot/copilot/LocalLfmBrain.kt)).
-- Usada sem internet ou no modo "só local". Num Note 10+ gera de 4 a 11 tokens por segundo.
+- O LFM3 fica como reserva do Gemma 4. Os dois são usados sem internet ou no modo "só local". O LFM3 gera de 4 a 11 tokens por segundo num Note 10+.
 
 ## 4. Memória e aprendizado
 

@@ -131,7 +131,20 @@ class CopilotEngine(
     @Volatile
     var liveContext: () -> String = { "" }
 
-    private val chatModel = app.dzz.copilot.brain.OpenAiChatModel(providers = { brainProviders() })
+    private val cloudModel = app.dzz.copilot.brain.OpenAiChatModel(providers = { brainProviders(cloud = true) })
+    private val lfmModel = app.dzz.copilot.brain.OpenAiChatModel(providers = { brainProviders(cloud = false) })
+    private val gemmaModel = GemmaChatModel { GemmaLocal.shared?.takeIf { store.localLfmEnabled.value && it.usable() } }
+    @Volatile private var lastBrain = ""
+
+    /** Cloud first (fast, smart); then Gemma 4 inside the app; the LFM3 server last. */
+    private val chatModel = object : app.dzz.copilot.brain.ChatModel {
+        override suspend fun turn(messages: org.json.JSONArray, tools: org.json.JSONArray): app.dzz.copilot.brain.ModelTurn? {
+            cloudModel.turn(messages, tools)?.let { lastBrain = cloudModel.lastProvider; return it }
+            gemmaModel.turn(messages, tools)?.let { lastBrain = "Gemma 4 local"; return it }
+            lfmModel.turn(messages, tools)?.let { lastBrain = lfmModel.lastProvider; return it }
+            return null
+        }
+    }
 
     /** The single brain with tools. Phone and glasses tools are registered by AuraSession. */
     val brain: app.dzz.copilot.brain.Brain by lazy {
@@ -144,11 +157,11 @@ class CopilotEngine(
         )
     }
 
-    /** Cloud first (fast, smart); the on-device model only offline or in only-local mode. */
-    private fun brainProviders(): List<app.dzz.copilot.brain.Provider> = buildList {
+    /** Cloud providers, or the on-device LFM3 server ([cloud] false). */
+    private fun brainProviders(cloud: Boolean): List<app.dzz.copilot.brain.Provider> = buildList {
         val local = store.localLfmUrl.value.trim()
         val localModel = store.localLfmModel.value.trim().ifBlank { "lfm3-omni" }
-        if (!store.onlyLocal.value) {
+        if (cloud && !store.onlyLocal.value) {
             store.geminiKey.value.trim().takeIf { it.isNotEmpty() }?.let {
                 add(app.dzz.copilot.brain.OpenAiChatModel.gemini(it))
             }
@@ -159,7 +172,7 @@ class CopilotEngine(
                 add(app.dzz.copilot.brain.OpenAiChatModel.openRouter(it, "openrouter/auto"))
             }
         }
-        if (store.localLfmEnabled.value && local.isNotEmpty()) {
+        if (!cloud && store.localLfmEnabled.value && local.isNotEmpty()) {
             add(app.dzz.copilot.brain.OpenAiChatModel.local(local, localModel))
         }
     }
@@ -168,7 +181,7 @@ class CopilotEngine(
     suspend fun converse(text: String, onTool: (String) -> Unit = {}): String? =
         runCatching { brain.agent.run(text, onTool)?.text }.getOrNull()?.takeIf { it.isNotBlank() }
 
-    fun brainProvider(): String = chatModel.lastProvider
+    fun brainProvider(): String = lastBrain
 
     /**
      * Runs a framework when the phrase is a dilemma, problem or decision.

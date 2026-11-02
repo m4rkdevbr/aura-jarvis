@@ -151,6 +151,8 @@ fun SettingsScreen(onBack: () -> Unit) {
     var draftLocalUrl by remember(localLfmUrl) { mutableStateOf(localLfmUrl) }
     var draftLocalModel by remember(localLfmModel) { mutableStateOf(localLfmModel) }
     var localStatus by remember { mutableStateOf("") }
+    val gemma by hub.gemma.status.collectAsState()
+    var gemmaTest by remember { mutableStateOf("") }
     val deviceLlm by hub.onDeviceLlm.status.collectAsState()
     val llmLog by hub.onDeviceLlm.diagnostics.collectAsState()
     val scope = rememberCoroutineScope()
@@ -576,6 +578,31 @@ fun SettingsScreen(onBack: () -> Unit) {
                 }
                 }
                 "cerebro" -> {
+                item {
+                    SectionCard("IA local rápida (Gemma 4)") {
+                        Text(
+                            "O Gemma 4 E2B roda dentro do app, na GPU do celular quando dá. Ele responde sem internet, com as ferramentas da Aura, e é bem mais rápido que o LFM3. A nuvem continua vindo primeiro; o Gemma entra quando não há internet ou com \"Tudo só no celular\". Download único de 2,6 GB, de preferência no Wi-Fi.",
+                            style = mutedStyle(),
+                        )
+                        Text(gemma.detail.ifBlank { if (gemma.installed) "Baixado." else "Não baixado." }, style = mutedStyle())
+                        if (gemma.phase == "download" && gemma.progress < 1f) {
+                            Text("Progresso ${(gemma.progress * 100).toInt()}%", style = mutedStyle())
+                        }
+                        if (gemma.speed.isNotBlank()) Text("Velocidade: ${gemma.speed}", style = mutedStyle())
+                        if (!gemma.installed) {
+                            WideButton(if (gemma.phase == "download") "Baixando…" else "Baixar Gemma 4 (2,6 GB)") {
+                                hub.gemma.startInstall()
+                            }
+                        } else {
+                            WideButton("Testar velocidade") {
+                                gemmaTest = "Carregando e testando, pode levar uns 20 segundos…"
+                                hub.gemma.startBenchmark { gemmaTest = it }
+                            }
+                            TextButton(onClick = { hub.gemma.delete(); gemmaTest = "" }) { Text("Apagar o Gemma 4 (libera 2,6 GB)") }
+                        }
+                        if (gemmaTest.isNotBlank()) Text(gemmaTest, style = mutedStyle())
+                    }
+                }
                 item {
                     SectionCard("Cérebro local no celular (LFM3-Omni)") {
                         Text(

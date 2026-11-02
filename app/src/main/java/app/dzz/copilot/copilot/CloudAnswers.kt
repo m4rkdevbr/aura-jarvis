@@ -62,7 +62,7 @@ class CloudAnswers(private val store: PreferencesStore) {
     fun text(prompt: String): CloudReply? {
         local.text(prompt)?.let { return it }
         if (store.onlyLocal.value) return null
-        return cloudText(prompt, GEMINI_SHORT_TOKENS)
+        return cloudText(prompt, GEMINI_SHORT_TOKENS) ?: local.offlineText(prompt)
     }
 
     /**
@@ -73,7 +73,7 @@ class CloudAnswers(private val store: PreferencesStore) {
         if (!store.privateReasoning.value && !store.onlyLocal.value) {
             cloudText(prompt, maxTokens)?.let { return it }
         }
-        return local.text(prompt, minOf(maxTokens, LOCAL_DEEP_TOKENS))
+        return local.text(prompt, minOf(maxTokens, LOCAL_DEEP_TOKENS)) ?: local.offlineText(prompt)
     }
 
     private fun cloudText(prompt: String, geminiTokens: Int): CloudReply? {

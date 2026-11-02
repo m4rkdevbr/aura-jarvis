@@ -16,6 +16,8 @@ sealed class LiveEvent {
     data class ToolCall(val id: String, val name: String, val args: JSONObject) : LiveEvent()
     data class ToolCancel(val ids: List<String>) : LiveEvent()
     data class GoAway(val timeLeft: String) : LiveEvent()
+    /** A handle that lets a new socket continue this same session (context included). */
+    data class Resume(val handle: String) : LiveEvent()
 }
 
 /**
@@ -28,7 +30,7 @@ object LiveProtocol {
     const val INPUT_RATE = 16_000
     const val OUTPUT_RATE = 24_000
 
-    fun setup(model: String, voice: String, system: String, functions: JSONArray, calm: Boolean = false, googleSearch: Boolean = false): String {
+    fun setup(model: String, voice: String, system: String, functions: JSONArray, calm: Boolean = false, googleSearch: Boolean = false, resumption: Boolean = false, resumeHandle: String? = null): String {
         val generation = JSONObject()
             .put("responseModalities", JSONArray().put("AUDIO"))
             .put(
@@ -46,6 +48,12 @@ object LiveProtocol {
             .put("outputAudioTranscription", JSONObject())
             // Without compression an audio+video session ends after about two minutes.
             .put("contextWindowCompression", JSONObject().put("slidingWindow", JSONObject()))
+        // Lets a new socket pick up this session when the server rotates or the network drops.
+        if (resumption) {
+            val resume = JSONObject()
+            resumeHandle?.takeIf { it.isNotBlank() }?.let { resume.put("handle", it) }
+            setup.put("sessionResumption", resume)
+        }
         if (calm) {
             // Noisy rooms: a turn starts only on clear, close speech and ends promptly when the user stops.
             setup.put(
@@ -167,6 +175,10 @@ object LiveProtocol {
             events += LiveEvent.ToolCancel((0 until ids.length()).map { ids.optString(it) })
         }
         root.optJSONObject("goAway")?.let { events += LiveEvent.GoAway(it.optString("timeLeft")) }
+        root.optJSONObject("sessionResumptionUpdate")?.let { update ->
+            val handle = update.optString("newHandle")
+            if (update.optBoolean("resumable", true) && handle.isNotBlank()) events += LiveEvent.Resume(handle)
+        }
         return events
     }
 }

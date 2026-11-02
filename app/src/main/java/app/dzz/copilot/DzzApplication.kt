@@ -72,6 +72,8 @@ class AppHub(application: Application) {
     val store = PreferencesStore(application)
     val onDeviceLlm = app.dzz.copilot.copilot.OnDeviceLlmRuntime(application)
     val localLfm = app.dzz.copilot.copilot.LocalLfmBrain(store)
+    /** Gemma 4 inside the app (fast offline brain); must exist before the brain is used. */
+    val gemma = app.dzz.copilot.copilot.GemmaLocal.get(application)
     val vault = Vault(application)
     val chat = ChatLog(application)
     val stage = PhoneStage()

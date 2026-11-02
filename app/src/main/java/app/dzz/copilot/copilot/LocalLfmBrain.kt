@@ -33,6 +33,21 @@ class LocalLfmBrain(private val store: PreferencesStore) {
 
     fun enabled(): Boolean = store.localLfmEnabled.value && baseUrl().isNotBlank()
 
+    /** Gemma 4 inside the app, when downloaded (much faster than the LFM3 server). */
+    private fun gemma(): GemmaLocal? = GemmaLocal.shared?.takeIf { store.localLfmEnabled.value && it.usable() }
+
+    /** Offline answer from Gemma 4 only (cloud failed or no internet). */
+    fun offlineText(prompt: String): CloudReply? =
+        gemma()?.text("Responda em português do Brasil, curto e falável. Não invente fatos.", emptyList(), prompt)
+            ?.let { CloudReply(it, GEMMA) }
+
+    /** Offline conversation turn from Gemma 4 only. */
+    fun offlineChat(turns: List<Pair<String, String>>, facts: String = ""): CloudReply? {
+        val last = turns.lastOrNull()?.takeIf { it.first != "aura" } ?: return null
+        val history = turns.takeLast(10).dropLast(1)
+        return gemma()?.text(AuraMind.spoken(facts), history, last.second)?.let { CloudReply(it, GEMMA) }
+    }
+
     fun ping(): String {
         if (!enabled()) return "Cérebro local desligado em Ajustes."
         // llama-server health + Ollama tags
@@ -88,7 +103,9 @@ class LocalLfmBrain(private val store: PreferencesStore) {
     }
 
     fun chat(turns: List<Pair<String, String>>, facts: String = ""): CloudReply? {
-        if (!enabled() || turns.isEmpty()) return null
+        if (turns.isEmpty()) return null
+        if (store.onlyLocal.value) offlineChat(turns, facts)?.let { return it }
+        if (!enabled()) return null
         val messages = JSONArray().put(JSONObject().put("role", "system").put("content", AuraMind.spoken(facts)))
         turns.takeLast(10).forEach { (role, text) ->
             messages.put(
@@ -131,7 +148,9 @@ class LocalLfmBrain(private val store: PreferencesStore) {
     }
 
     fun text(prompt: String, maxTokens: Int = CHAT_TOKENS): CloudReply? {
-        if (!enabled() || prompt.isBlank()) return null
+        if (prompt.isBlank()) return null
+        if (store.onlyLocal.value) offlineText(prompt)?.let { return it }
+        if (!enabled()) return null
         // The prompt brings its own persona and format, so the system turn stays minimal.
         val messages = JSONArray()
             .put(JSONObject().put("role", "system").put("content", "Responda em português do Brasil. Não invente fatos."))
@@ -207,6 +226,7 @@ class LocalLfmBrain(private val store: PreferencesStore) {
 
     private companion object {
         const val TAG = "DzzLfm"
+        const val GEMMA = "Gemma 4 local"
         const val ROUTE_TOKENS = 80
         const val CHAT_TOKENS = 160
         val JSON = "application/json; charset=utf-8".toMediaType()

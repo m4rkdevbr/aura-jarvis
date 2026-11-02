@@ -12,6 +12,7 @@ Legenda: ✅ pronto · 🧪 pronto, em teste no hardware · 🔜 próximo · �
 | ✅ | Protocolo documentado do zero, com testes |
 | ✅ | Palavra "Aura" offline (Vosk) |
 | ✅ | Conversa ao vivo com interrupção (Gemini Live) |
+| 🧪 | Conversa sem limite de tempo: troca de conexão antes dos 58 minutos e depois de quedas de rede, sem a pessoa perceber |
 | ✅ | Óculos como fone Bluetooth na conversa, sem bipes |
 | 🧪 | Foto IA com retomada de pedaços e captura compartilhada |
 | ✅ | Foco na voz: redutor de ruído e impressão vocal no aparelho |
@@ -20,6 +21,7 @@ Legenda: ✅ pronto · 🧪 pronto, em teste no hardware · 🔜 próximo · �
 | ✅ | Memória de longo prazo e arquivo de contexto |
 | 🧪 | Aprendizado automático depois de cada conversa |
 | ✅ | IA local (LFM3-Omni com llama.cpp) |
+| 🧪 | IA local rápida: Gemma 4 E2B dentro do app com LiteRT-LM (GPU ou CPU), com as ferramentas da Aura |
 | ✅ | Celular: agenda, SMS, ligação, notificações, arquivos, tela, apps |
 | 🧪 | Busca dentro de apps (YouTube, Spotify, Maps, Play Store) e toque na tela |
 | ✅ | E-mail, WhatsApp e Telegram |

@@ -31,7 +31,7 @@ O backup automático do Android está desligado (`allowBackup=false`), para que 
 | Conexões MCP | O servidor que você conectou | Só os dados da ferramenta chamada |
 | Telegram | Telegram | As mensagens trocadas com o seu próprio bot |
 
-Com o **modo só local** ligado, nada vai para a nuvem: a Aura usa a IA no aparelho (LFM3-Omni) e os recursos offline.
+Com o **modo só local** ligado, nada vai para a nuvem: a Aura usa a IA no aparelho (Gemma 4 ou LFM3-Omni) e os recursos offline.
 
 ## Como ela evita agir sem você
 

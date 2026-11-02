@@ -94,7 +94,8 @@ class GeminiLive(
 
     fun start(first: String?) {
         if (active) {
-            first?.takeIf { it.isNotBlank() }?.let { send(LiveProtocol.text(it)) }
+            val text = first?.takeIf { it.isNotBlank() } ?: return
+            if (ready) send(LiveProtocol.text(text)) else if (firstText == null) firstText = text.trim()
             return
         }
         active = true
@@ -109,8 +110,23 @@ class GeminiLive(
         models = (listOf(store.liveModel.value.trim()) + FALLBACK_MODELS).filter { it.isNotBlank() }.distinct()
         modelIndex = 0
         nativeSearch = !store.onlyLocal.value
+        renewing = false
+        resumeHandle = null
+        reconnects = 0
+        synchronized(turns) { turns.clear() }
         connect()
     }
+
+    /** Server handle to continue this session on a new socket (null until the server sends one). */
+    @Volatile private var resumeHandle: String? = null
+    /** The handle the socket being opened is using (dropped if the server refuses it). */
+    @Volatile private var usingHandle: String? = null
+    /** True while the socket is being swapped mid-conversation (no greeting, same voice player). */
+    @Volatile private var renewing = false
+    @Volatile private var connectedAt = 0L
+    @Volatile private var reconnects = 0
+    /** Recent turns, for continuing on a fresh socket when the handle does not work. */
+    private val turns = ArrayList<String>()
 
     /** Gemini's own Google Search inside the live session; turned off if a model refuses the setup. */
     @Volatile private var nativeSearch = true
@@ -123,8 +139,16 @@ class GeminiLive(
         socket = http.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 val search = nativeSearch
+                val handle = if (renewing && search) resumeHandle else null
+                usingHandle = handle
                 val functions = tools().filter { !(search && it.name == "web_search") }
-                webSocket.send(LiveProtocol.setup(model, store.voiceName.value, systemPrompt(), LiveProtocol.functions(functions), store.liveCalm.value, search))
+                val carry = if (renewing && handle == null) LiveContinuity.continuation(synchronized(turns) { turns.toList() }) else ""
+                webSocket.send(
+                    LiveProtocol.setup(
+                        model, store.voiceName.value, systemPrompt() + carry, LiveProtocol.functions(functions),
+                        store.liveCalm.value, googleSearch = search, resumption = search, resumeHandle = handle,
+                    ),
+                )
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) = onServer(webSocket, text)
@@ -145,18 +169,56 @@ class GeminiLive(
     private fun closed(webSocket: WebSocket, why: String) {
         if (webSocket !== socket || !active) return
         Log.w(TAG, "Live $why")
-        if (!ready && nativeSearch) {
+        if (ready) {
+            renew("a conexão caiu", pause = RECONNECT_PAUSE_MS)
+            return
+        }
+        if (renewing && usingHandle != null) {
+            Log.w(TAG, "Live não aceitou retomar a sessão; reabrindo com o resumo da conversa")
+            resumeHandle = null
+            connect()
+            return
+        }
+        if (nativeSearch && !renewing) {
             Log.w(TAG, "Live recusou a busca nativa; tentando de novo sem ela")
             nativeSearch = false
             connect()
             return
         }
-        if (!ready && modelIndex + 1 < models.size) {
+        if (renewing) {
+            renew(why, pause = RECONNECT_PAUSE_MS)
+            return
+        }
+        if (modelIndex + 1 < models.size) {
             modelIndex++
             connect()
             return
         }
-        end(if (ready) "a conexão caiu" else why)
+        end(why)
+    }
+
+    /**
+     * Swaps the socket without ending the talk: on the server's go-away, after ~50 minutes at a
+     * quiet moment, or when the network drops. The user hears no greeting and keeps talking.
+     */
+    @Synchronized
+    private fun renew(reason: String, pause: Long = 0L) {
+        if (!active) return
+        if (++reconnects > LiveContinuity.MAX_RECONNECTS) {
+            end(if (reason == "a conexão caiu") reason else "não deu para manter a conexão ($reason)")
+            return
+        }
+        Log.i(TAG, "renovando a conexão ao vivo: $reason (tentativa $reconnects)")
+        renewing = true
+        ready = false
+        val old = socket
+        socket = null
+        old?.close(1000, null)
+        lastActivity = SystemClock.elapsedRealtime()
+        scope.launch {
+            if (pause > 0) delay(pause)
+            if (active && socket == null) connect()
+        }
     }
 
     private fun onServer(webSocket: WebSocket, message: String) {
@@ -180,7 +242,8 @@ class GeminiLive(
                 LiveEvent.TurnDone -> onTurnDone()
                 is LiveEvent.ToolCall -> runTool(event)
                 is LiveEvent.ToolCancel -> Unit
-                is LiveEvent.GoAway -> end("a sessão ao vivo chegou ao limite")
+                is LiveEvent.GoAway -> renew("o servidor pediu troca (resta ${event.timeLeft})")
+                is LiveEvent.Resume -> resumeHandle = event.handle
             }
         }
     }
@@ -188,22 +251,34 @@ class GeminiLive(
     private fun onReady() {
         ready = true
         opened = true
-        lastActivity = SystemClock.elapsedRealtime()
-        player = copilot.livePlayer(callAudio()).also { it.start() }
-        Log.i(TAG, "Live pronto (${models[modelIndex]}${if (callAudio()) ", chamada Bluetooth" else ""}${if (nativeSearch) ", busca Google nativa" else ""})")
-        listener.onOpen()
-        // With only "Aura" said, a short greeting tells the user she is listening.
-        send(LiveProtocol.text(firstText ?: GREETING))
-        firstText = null
+        connectedAt = SystemClock.elapsedRealtime()
+        lastActivity = connectedAt
+        if (renewing) {
+            renewing = false
+            if (player == null) player = copilot.livePlayer(callAudio()).also { it.start() }
+            Log.i(TAG, "Live renovado sem interromper a conversa (${if (usingHandle != null) "sessão retomada" else "com o resumo da conversa"})")
+            firstText?.let { send(LiveProtocol.text(it)) }
+            firstText = null
+        } else {
+            player = copilot.livePlayer(callAudio()).also { it.start() }
+            Log.i(TAG, "Live pronto (${models[modelIndex]}${if (callAudio()) ", chamada Bluetooth" else ""}${if (nativeSearch) ", busca Google nativa" else ""})")
+            listener.onOpen()
+            // With only "Aura" said, a short greeting tells the user she is listening.
+            send(LiveProtocol.text(firstText ?: GREETING))
+            firstText = null
+        }
         val queued = synchronized(pending) { pending.toList().also { pending.clear() } }
         queued.forEach { send(LiveProtocol.audio(it)) }
         idleJob?.cancel()
         idleJob = scope.launch {
             while (isActive && active) {
                 delay(1_000)
-                val quiet = SystemClock.elapsedRealtime() - lastActivity
+                if (!ready) continue
+                val now = SystemClock.elapsedRealtime()
+                val quiet = now - lastActivity
                 val talking = player?.playing == true
-                if (endAfterTurn && !talking && quiet > 1_200) end("tchau")
+                if (!endAfterTurn && LiveContinuity.shouldRenew(now - connectedAt, quiet, talking, toolsRunning.get())) renew("perto do limite de tempo da sessão")
+                else if (endAfterTurn && !talking && quiet > 1_200) end("tchau")
                 else if (!talking && toolsRunning.get() == 0 && quiet > IDLE_MS) end("silêncio")
             }
         }
@@ -213,6 +288,12 @@ class GeminiLive(
         val heard = synchronized(userText) { userText.toString().trim().also { userText.clear() } }
         val said = synchronized(modelText) { modelText.toString().trim().also { modelText.clear() } }
         Log.i(TAG, "turno: ouviu ${heard.length} letras, respondeu ${said.length} letras")
+        synchronized(turns) {
+            LiveContinuity.line("Usuário", heard)?.let { turns.add(it) }
+            LiveContinuity.line("Aura", said)?.let { turns.add(it) }
+            while (turns.size > LiveContinuity.MAX_TURNS) turns.removeAt(0)
+        }
+        reconnects = 0
         if (heard.isNotEmpty()) listener.onUser(heard)
         if (said.isNotEmpty()) listener.onReply(said)
         listener.onTurnDone()
@@ -248,8 +329,9 @@ class GeminiLive(
         send(LiveProtocol.audio(pcm))
     }
 
+    /** Only on a set-up socket: anything sent while it is being swapped would be refused. */
     private fun send(message: String) {
-        socket?.takeIf { active }?.send(message)
+        socket?.takeIf { active && ready }?.send(message)
     }
 
     private fun runTool(call: LiveEvent.ToolCall) {
@@ -321,6 +403,7 @@ class GeminiLive(
         if (!active) return
         active = false
         ready = false
+        renewing = false
         idleJob?.cancel()
         watchJob?.cancel()
         socket?.close(1000, null)
@@ -378,5 +461,6 @@ class GeminiLive(
         const val MAX_PENDING_CHUNKS = 40
         const val WATCH_MS = 120_000L
         const val WATCH_EVERY_MS = 3_000L
+        const val RECONNECT_PAUSE_MS = 1_000L
     }
 }

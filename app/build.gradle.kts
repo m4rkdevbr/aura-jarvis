@@ -101,6 +101,8 @@ dependencies {
     implementation("com.google.mlkit:image-labeling:17.0.9")
     implementation("com.google.mlkit:translate:17.0.3")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // Gemma 4 inside the app. 0.16.1 is the last release built with Kotlin 2.2 (newer ones need 2.4).
+    implementation("com.google.ai.edge.litertlm:litertlm-android:0.16.1")
     // Offline Portuguese speech (wake word "Aura" and fallback transcript); model in assets/vosk-pt.
     implementation("com.alphacephei:vosk-android:0.3.47@aar")
     implementation("net.java.dev.jna:jna:5.13.0@aar")
