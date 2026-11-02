@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="branding/aura-icon-preview.png" alt="Logo da Aura" width="160">
+
 # Aura Jarvis
 
 ### Um assistente pessoal de verdade, que vive nos seus óculos inteligentes e no seu celular
