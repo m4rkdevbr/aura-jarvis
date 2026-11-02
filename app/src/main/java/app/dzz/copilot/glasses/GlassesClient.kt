@@ -85,6 +85,7 @@ class GlassesClient(
     private var queueStarted = false
     private var writeInFlight = false
     private var writeRetries = 0
+    private var writeStartedAt = 0L
 
     /** Chunks dropped after every retry failed; read by the health monitor. */
     @Volatile var writeDrops = 0
@@ -626,9 +627,11 @@ class GlassesClient(
             if (status != BluetoothGatt.GATT_SUCCESS) {
                 log("Write GATT falhou: ${gattMessage(status)}")
             }
-            writeInFlight = false
-            handler.removeCallbacks(writePaceFallback)
-            drainWrite()
+            handler.post {
+                writeInFlight = false
+                handler.removeCallbacks(writePaceFallback)
+                drainWrite()
+            }
         }
 
         override fun onCharacteristicChanged(
@@ -636,12 +639,16 @@ class GlassesClient(
             characteristic: BluetoothGattCharacteristic,
             value: ByteArray,
         ) {
+            releaseOnReply()
             accept(value)
         }
 
         @Deprecated("Deprecated in API 33")
         override fun onCharacteristicChanged(gatt: BluetoothGatt, characteristic: BluetoothGattCharacteristic) {
-            if (Build.VERSION.SDK_INT < 33) accept(characteristic.value ?: return)
+            if (Build.VERSION.SDK_INT < 33) {
+                releaseOnReply()
+                accept(characteristic.value ?: return)
+            }
         }
 
         override fun onCharacteristicRead(
@@ -1117,10 +1124,16 @@ class GlassesClient(
         val characteristic = writeChar ?: return
         val link = gatt ?: return
         writeInFlight = true
+        writeStartedAt = SystemClock.elapsedRealtime()
+        // The QC write characteristic supports "write without response" (prop 12), like the DZZ app
+        // uses. With a plain write the glasses answer late and every 0xFD chunk request waited the
+        // whole 600 ms safety net (a 17-chunk photo took 10 s).
+        val noResponse = characteristic.properties and BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE != 0
+        val type = if (noResponse) BluetoothGattCharacteristic.WRITE_TYPE_NO_RESPONSE else BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
         val ok = if (Build.VERSION.SDK_INT >= 33) {
-            writeCharacteristicModern(link, characteristic, chunk)
+            writeCharacteristicModern(link, characteristic, chunk, type)
         } else {
-            characteristic.writeType = BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+            characteristic.writeType = type
             characteristic.value = chunk
             link.writeCharacteristic(characteristic)
         }
@@ -1140,9 +1153,20 @@ class GlassesClient(
             return
         }
         writeRetries = 0
-        // WRITE_TYPE_DEFAULT always answers via onCharacteristicWrite; this is only a safety net.
+        // onCharacteristicWrite normally releases the next chunk; this is only a safety net.
         handler.removeCallbacks(writePaceFallback)
-        handler.postDelayed(writePaceFallback, WRITE_FALLBACK_MS)
+        handler.postDelayed(writePaceFallback, if (noResponse) WRITE_FALLBACK_NR_MS else WRITE_FALLBACK_MS)
+    }
+
+    /** A reply from the glasses proves the last write landed, so the next one can go now. */
+    private fun releaseOnReply() {
+        handler.post {
+            if (writeInFlight && SystemClock.elapsedRealtime() - writeStartedAt >= 10) {
+                writeInFlight = false
+                handler.removeCallbacks(writePaceFallback)
+                drainWrite()
+            }
+        }
     }
 
     private val writePaceFallback = Runnable {
@@ -1172,12 +1196,9 @@ class GlassesClient(
         link: BluetoothGatt,
         characteristic: BluetoothGattCharacteristic,
         chunk: ByteArray,
+        type: Int,
     ): Boolean {
-        return link.writeCharacteristic(
-            characteristic,
-            chunk,
-            BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT,
-        ) == BluetoothStatusCodes.SUCCESS
+        return link.writeCharacteristic(characteristic, chunk, type) == BluetoothStatusCodes.SUCCESS
     }
 
     private fun closeGatt() {
@@ -1266,6 +1287,7 @@ class GlassesClient(
         private const val QC_FORCE_MAX = 2
         private const val MAX_WRITE_RETRIES = 6
         private const val WRITE_FALLBACK_MS = 600L
+        private const val WRITE_FALLBACK_NR_MS = 60L
         private const val CHUNK_STALL_MS = 1_300L
         private const val FIRST_CHUNK_MS = 4_000L
         private const val MAX_CHUNK_RESENDS = 12

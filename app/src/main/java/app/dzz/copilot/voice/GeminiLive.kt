@@ -108,8 +108,12 @@ class GeminiLive(
         modelText.clear()
         models = (listOf(store.liveModel.value.trim()) + FALLBACK_MODELS).filter { it.isNotBlank() }.distinct()
         modelIndex = 0
+        nativeSearch = !store.onlyLocal.value
         connect()
     }
+
+    /** Gemini's own Google Search inside the live session; turned off if a model refuses the setup. */
+    @Volatile private var nativeSearch = true
 
     private fun connect() {
         val model = models.getOrNull(modelIndex) ?: return end("nenhum modelo ao vivo respondeu")
@@ -118,7 +122,9 @@ class GeminiLive(
         Log.i(TAG, "abrindo Live com $model")
         socket = http.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                webSocket.send(LiveProtocol.setup(model, store.voiceName.value, systemPrompt(), LiveProtocol.functions(tools()), store.liveCalm.value))
+                val search = nativeSearch
+                val functions = tools().filter { !(search && it.name == "web_search") }
+                webSocket.send(LiveProtocol.setup(model, store.voiceName.value, systemPrompt(), LiveProtocol.functions(functions), store.liveCalm.value, search))
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) = onServer(webSocket, text)
@@ -139,6 +145,12 @@ class GeminiLive(
     private fun closed(webSocket: WebSocket, why: String) {
         if (webSocket !== socket || !active) return
         Log.w(TAG, "Live $why")
+        if (!ready && nativeSearch) {
+            Log.w(TAG, "Live recusou a busca nativa; tentando de novo sem ela")
+            nativeSearch = false
+            connect()
+            return
+        }
         if (!ready && modelIndex + 1 < models.size) {
             modelIndex++
             connect()
@@ -178,7 +190,7 @@ class GeminiLive(
         opened = true
         lastActivity = SystemClock.elapsedRealtime()
         player = copilot.livePlayer(callAudio()).also { it.start() }
-        Log.i(TAG, "Live pronto (${models[modelIndex]}${if (callAudio()) ", chamada Bluetooth" else ""})")
+        Log.i(TAG, "Live pronto (${models[modelIndex]}${if (callAudio()) ", chamada Bluetooth" else ""}${if (nativeSearch) ", busca Google nativa" else ""})")
         listener.onOpen()
         // With only "Aura" said, a short greeting tells the user she is listening.
         send(LiveProtocol.text(firstText ?: GREETING))

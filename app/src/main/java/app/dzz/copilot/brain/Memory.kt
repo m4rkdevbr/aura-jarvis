@@ -197,6 +197,7 @@ class Memory(
 
     /** Saves what [Learner] found; returns how many were new. */
     fun learn(items: List<Learner.Item>): Int = items.count { item ->
+        if (facts.all().any { Learner.covers(it.text, item.text) }) return@count false
         val before = facts.all().size
         facts.add(item.text, item.kind)
         facts.all().size > before

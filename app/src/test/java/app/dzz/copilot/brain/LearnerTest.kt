@@ -25,6 +25,15 @@ class LearnerTest {
     }
 
     @Test
+    fun dropsCutOffDuplicates() {
+        val items = Learner.parse("FATO: Gosta de automação de tarefas e de aprender tecnologias novas\nFATO: Gosta de automação de tarefas e de aprender")
+        assertEquals(1, items.size)
+        val memory = Memory(createTempDir())
+        memory.learn(items)
+        assertEquals(0, memory.learn(listOf(Learner.Item(MemoryStore.KIND_FACT, "Gosta de automação de tarefas"))))
+    }
+
+    @Test
     fun neverKeepsSecrets() {
         val items = Learner.parse("FATO: A senha do banco é 1234\nFATO: O CPF dele é 123.456.789-00\nFATO: Mora em Curitiba")
         assertEquals(listOf("Mora em Curitiba"), items.map { it.text })

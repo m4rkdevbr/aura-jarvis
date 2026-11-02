@@ -75,10 +75,10 @@ class AgentTest {
         val dir = Files.createTempDirectory("mem").toFile()
         var t = 0L
         val memory = Memory(dir) { ++t }
-        assertTrue(memory.remember("A filha do Fábio se chama Ana"))
-        assertTrue(!memory.remember("a filha do usuario se chama ana"))
+        assertTrue(memory.remember("A filha do Paulo se chama Ana"))
+        assertTrue(!memory.remember("a filha do paulo se chama ana"))
         memory.remember("Prefere reuniões depois das 10h")
-        assertEquals("A filha do Fábio se chama Ana", Memory(dir).recall("como chama a filha").first().text)
+        assertEquals("A filha do Paulo se chama Ana", Memory(dir).recall("como chama a filha").first().text)
         assertEquals(1, memory.forget("reunioes"))
     }
 

@@ -285,11 +285,16 @@ class PhoneMicEngine(
                     return@execute
                 }
                 stopHeadsetVoiceRecognition()
-                if (focus?.isUser(pcm) == false) {
+                // The offline model runs first: "Aura" said out loud is the user's intent, so it never
+                // goes through the voice print. Short phrases on the phone mic (the print was recorded
+                // on the glasses) scored near zero and the wake word was ignored for minutes.
+                val local = localAsr?.takeIf { store.localWake.value && it.ready }?.transcribe(pcm)
+                val wakeHeard = local != null && LocalAsr.hasWake(local)
+                if (!wakeHeard && focus?.isUser(pcm) == false) {
                     Log.i(TAG, "voz de outra pessoa ignorada")
                     return@execute
                 }
-                val text = transcribe(pcm)?.trim().orEmpty()
+                val text = transcribe(pcm, local)?.trim().orEmpty()
                 if (text.isNotBlank() && running.get() && !paused.get() && liveTap == null) {
                     Log.i(TAG, "ouvi: $text")
                     main.post { onText(text) }
@@ -307,9 +312,8 @@ class PhoneMicEngine(
      * "Aura" or during a command goes to Whisper (more accurate), and the local text covers the
      * cases without cloud. Without the local model it is Whisper as before.
      */
-    private fun transcribe(pcm: ByteArray): String? {
-        val local = localAsr?.takeIf { store.localWake.value && it.ready }?.transcribe(pcm)
-            ?: return whisper(pcm)
+    private fun transcribe(pcm: ByteArray, localText: String?): String? {
+        val local = localText ?: return whisper(pcm)
         val wake = LocalAsr.hasWake(local)
         if (!wake && !commandOpen()) return null
         val cloudOk = !store.onlyLocal.value && store.groqKey.value.isNotBlank()

@@ -28,7 +28,7 @@ object LiveProtocol {
     const val INPUT_RATE = 16_000
     const val OUTPUT_RATE = 24_000
 
-    fun setup(model: String, voice: String, system: String, functions: JSONArray, calm: Boolean = false): String {
+    fun setup(model: String, voice: String, system: String, functions: JSONArray, calm: Boolean = false, googleSearch: Boolean = false): String {
         val generation = JSONObject()
             .put("responseModalities", JSONArray().put("AUDIO"))
             .put(
@@ -60,9 +60,11 @@ object LiveProtocol {
                 ),
             )
         }
-        if (functions.length() > 0) {
-            setup.put("tools", JSONArray().put(JSONObject().put("functionDeclarations", functions)))
-        }
+        val tools = JSONArray()
+        // Grounded search inside the live session: no extra round trip through our own web_search.
+        if (googleSearch) tools.put(JSONObject().put("googleSearch", JSONObject()))
+        if (functions.length() > 0) tools.put(JSONObject().put("functionDeclarations", functions))
+        if (tools.length() > 0) setup.put("tools", tools)
         return JSONObject().put("setup", setup).toString()
     }
 
