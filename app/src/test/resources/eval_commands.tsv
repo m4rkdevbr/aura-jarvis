@@ -1,0 +1,66 @@
+# Frase falada depois de "Aura" <TAB> resultado esperado do parser, ou NENHUM quando deve ir para o modelo
+tira uma foto	Photo
+tira uma foto disso	Photo
+fotografa isso aqui	Photo
+grava um vídeo	VideoStart
+começa a filmar	VideoStart
+parar o vídeo	VideoStop
+parar a gravação	VideoStop
+grava um áudio	AudioStart
+parar o áudio	AudioStop
+qual a bateria	Battery
+quanta carga tem	Battery
+sincroniza a hora	Time
+onde estão os óculos	Find
+importar as fotos	Import
+baixar as fotos	Import
+o que você está vendo	Look
+descreve o que tem na minha frente	Look
+o que é isso	Identify
+leia a placa	Identify
+me explica isso	Explain
+explica o texto	ExplainText
+traduz	Translate
+traduz bom dia para o inglês	Translate
+parar a tradução	TranslateStop
+pesquisa o preço do dólar	Search
+busca restaurantes perto de mim	Search
+minha agenda	Agenda
+o que tenho hoje	Agenda
+meus compromissos	Agenda
+minhas mensagens	Messages
+o que chegou no whatsapp	Messages
+ajuda	Help
+quais comandos	Help
+cancela	Stop
+me lembra de beber água em dez minutos	Task
+anota comprar pão	Task
+abre o clima de brasília	Open
+cria uma imagem de um farol	Imagine
+lembra que o João prefere reunião de manhã	Remember
+guarda que meu voo é na terça	Remember
+memoriza que a chave está na gaveta	Remember
+não esquece que o aluguel vence dia dez	Remember
+o que você sabe sobre o João	Recall
+o que combinei com o João	Recall
+o que eu decidi sobre o módulo	Recall
+me lembra o que combinei com a Maria	Recall
+você lembra do meu voo	Recall
+esquece que meu voo é na terça	Forget
+apaga da memória a chave da gaveta	Forget
+qual a capital da França	NENHUM
+me conta uma piada	NENHUM
+quanto é doze vezes oito	NENHUM
+quem escreveu dom casmurro	NENHUM
+como faço arroz soltinho	NENHUM
+não sei se aceito a proposta ou espero mais um mês	NENHUM
+vale a pena trocar de carro agora	NENHUM
+minha tarde virou um caos e preciso priorizar	NENHUM
+bom dia	NENHUM
+você gosta de música	NENHUM
+como está meu dia	NENHUM
+faz o resumo do dia	NENHUM
+me prepara para a reunião com o João	NENHUM
+vou viajar na terça	NENHUM
+como respondo o Pedro	NENHUM
+quero aprender sobre juros compostos	NENHUM

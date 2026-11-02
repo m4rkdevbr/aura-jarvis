@@ -1,0 +1,21 @@
+name: Ideia ou funcionalidade
+description: Proponha algo que deixaria a Aura mais útil
+labels: [ideia]
+body:
+  - type: textarea
+    id: situacao
+    attributes:
+      label: Em que situação isso ajudaria?
+      description: Conte o momento do seu dia em que você sentiu falta disso.
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Como você imagina que funcione
+      description: O que você diria para a Aura e o que ela faria.
+  - type: textarea
+    id: riscos
+    attributes:
+      label: Privacidade e segurança
+      description: Isso envolve dados pessoais, enviar algo em seu nome ou gastar dinheiro? Como evitar abuso?

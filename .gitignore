@@ -1,0 +1,16 @@
+/.gradle/
+/build/
+/app/build/
+/local.properties
+*.iml
+.idea/
+.DS_Store
+captures/
+# Modelos grandes baixados por tools/baixar-modelos.*
+/app/src/main/assets/vosk-pt/
+*.gguf
+*.onnx
+# Nunca versionar segredos
+*.keystore
+*.jks
+secrets.properties

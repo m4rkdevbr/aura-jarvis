@@ -1,0 +1,32 @@
+name: Algo não funcionou
+description: Relate um problema com a Aura, os óculos ou o celular
+labels: [bug]
+body:
+  - type: textarea
+    id: oque
+    attributes:
+      label: O que aconteceu
+      description: O que você pediu, o que esperava e o que a Aura fez.
+    validations:
+      required: true
+  - type: input
+    id: oculos
+    attributes:
+      label: Óculos
+      placeholder: "AIMB-G2 Pro, firmware ..."
+  - type: input
+    id: celular
+    attributes:
+      label: Celular e versão do Android
+      placeholder: "Galaxy Note 10+, Android 12"
+  - type: input
+    id: versao
+    attributes:
+      label: Versão da Aura
+      placeholder: "1.1.0 (commit ...)"
+  - type: textarea
+    id: diagnostico
+    attributes:
+      label: Registro de Ajustes > Diagnóstico
+      description: Use "Copiar registro". Apague antes qualquer dado pessoal, chave ou senha.
+      render: text

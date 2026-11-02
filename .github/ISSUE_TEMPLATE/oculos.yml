@@ -1,0 +1,20 @@
+name: Novo modelo de óculos
+description: Ajude a documentar ou suportar outros óculos
+labels: [oculos]
+body:
+  - type: input
+    id: modelo
+    attributes:
+      label: Modelo e fabricante
+    validations:
+      required: true
+  - type: textarea
+    id: servicos
+    attributes:
+      label: Serviços Bluetooth encontrados
+      description: Copie a lista de serviços de Ajustes > Diagnóstico, ou de um app como o nRF Connect.
+      render: text
+  - type: textarea
+    id: funciona
+    attributes:
+      label: O que já funciona com a Aura

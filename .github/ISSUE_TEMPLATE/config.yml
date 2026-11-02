@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Falha de segurança
+    url: https://github.com/m4rkdevbr/aura-jarvis/security/advisories/new
+    about: Relate falhas de segurança em particular, nunca numa issue pública.
